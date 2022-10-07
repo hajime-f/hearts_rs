@@ -33,7 +33,7 @@ fn main() {
         match idx[i] {
             1 => agents.push(Box::new(RandomAgent::new())),
             2 => agents.push(Box::new(RuleBasedAgent::new())),
-            _ => panic!("occurred error1"),
+            _ => panic!("occurred error1")
         }
     }
 
@@ -65,11 +65,9 @@ fn main() {
 }
 
 // fn play_one_game<T: Agent>(agents: &mut Vec<T>, whole_card_sequence: &mut [i32; NUM_CARDS], whole_agent_sequence: &mut [i32; NUM_CARDS]) {
-fn play_one_game(
-    agents: &mut Vec<Box<dyn Agent>>,
-    whole_card_sequence: &mut [i32; NUM_CARDS],
-    whole_agent_sequence: &mut [i32; NUM_CARDS],
-) {
+fn play_one_game(agents: &mut Vec<Box<dyn Agent>>,
+                 whole_card_sequence: &mut [i32; NUM_CARDS],
+                 whole_agent_sequence: &mut [i32; NUM_CARDS]) {
     // Cards are dealt to the four agents so that each has NUM_KC cards at the beginning of a game.
     let dealt_cards = deal_cards(agents);
     // let ss = dealt_cards.iter()
@@ -110,13 +108,7 @@ fn play_one_game(
             let mut card;
             loop {
                 card = agents[playing_agent].select_card();
-                if is_valid_card(
-                    &agents[playing_agent].get_hand(),
-                    &card_sequence,
-                    card,
-                    trick,
-                    bh_flag,
-                ) {
+                if is_valid_card(&agents[playing_agent].get_hand(), &card_sequence, card, trick, bh_flag) {
                     break;
                 }
             }
@@ -312,7 +304,9 @@ struct RandomAgent {
 
 impl RandomAgent {
     pub fn new() -> Self {
-        Self { hand: [-1; NUM_KC] }
+        Self {
+            hand: [-1; NUM_KC]
+        }
     }
 
     // pub fn first(&self) -> i32 {
@@ -321,6 +315,10 @@ impl RandomAgent {
 }
 
 impl Agent for RandomAgent {
+    fn get_hand(&self) -> &[i32; NUM_KC] {
+        &self.hand
+    }
+
     fn get_hand(&self) -> &[i32; NUM_KC] {
         &self.hand
     }
@@ -356,7 +354,9 @@ struct RuleBasedAgent {
 
 impl RuleBasedAgent {
     pub fn new() -> Self {
-        Self { hand: [-1; NUM_KC] }
+        Self {
+            hand: [-1; NUM_KC]
+        }
     }
 }
 
