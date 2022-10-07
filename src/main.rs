@@ -21,11 +21,18 @@ const HEART: i32 = 3;
 const C_2: i32 = 0;
 const S_Q: i32 = SPADE * (NUM_KC as i32) + 10;
 
+const CARD_NAME: [&str; NUM_CARDS] = [
+    "C-2", "C-3", "C-4", "C-5", "C-6", "C-7", "C-8", "C-9", "C-10", "C-J", "C-Q", "C-K", "C-A",
+    "D-2", "D-3", "D-4", "D-5", "D-6", "D-7", "D-8", "D-9", "D-10", "D-J", "D-Q", "D-K", "D-A",
+    "S-2", "S-3", "S-4", "S-5", "S-6", "S-7", "S-8", "S-9", "S-10", "S-J", "S-Q", "S-K", "S-A",
+    "H-2", "H-3", "H-4", "H-5", "H-6", "H-7", "H-8", "H-9", "H-10", "H-J", "H-Q", "H-K", "H-A",
+];
+
 fn main() {
     // Assigning agents:
     // 1 -> Random agent; it plays cards from its hand at random.
     // 2 -> Rule-based agent; it plays cards based on the pre-determined rules.
-    let idx: [i32; NUM_PLAYERS] = [1, 2, 2, 2];
+    let idx: [i32; NUM_PLAYERS] = [1, 1, 1, 2];
 
     // Making instances of 4 agents and store the objects in Vec.
     let mut agents: Vec<Box<dyn Agent>> = Vec::new();
@@ -33,7 +40,7 @@ fn main() {
         match idx[i] {
             1 => agents.push(Box::new(RandomAgent::new())),
             2 => agents.push(Box::new(RuleBasedAgent::new())),
-            _ => panic!("occurred error1")
+            _ => panic!("Specify correct agent number."),
         }
     }
 
@@ -64,31 +71,24 @@ fn main() {
     println!("{:?}", averaged_penalty_points);
 }
 
-// fn play_one_game<T: Agent>(agents: &mut Vec<T>, whole_card_sequence: &mut [i32; NUM_CARDS], whole_agent_sequence: &mut [i32; NUM_CARDS]) {
-fn play_one_game(agents: &mut Vec<Box<dyn Agent>>,
-                 whole_card_sequence: &mut [i32; NUM_CARDS],
-                 whole_agent_sequence: &mut [i32; NUM_CARDS]) {
+fn play_one_game(
+    agents: &mut Vec<Box<dyn Agent>>,
+    whole_card_sequence: &mut [i32; NUM_CARDS],
+    whole_agent_sequence: &mut [i32; NUM_CARDS],
+) {
     // Cards are dealt to the four agents so that each has NUM_KC cards at the beginning of a game.
     let dealt_cards = deal_cards(agents);
-    // let ss = dealt_cards.iter()
-    //     .fold(String::new(), |r, n| {
-    //
-    //         format!("{},{}", r, n.to_string() )
-    //
-    //     }).collect::<Vec<_>>();
-
-    //let ss = dealt_cards.iter().map(|e| e.to_string()).collect::<Vec<_>>().join(",");
 
     // Getting the playing sequence in the first trick based on agents' hands.
     // (the agent who has C-2 is the leading player in the initial trick).
-    // let idx = dealt_cards.iter().position(|val| *val == C_2).unwrap_or(0);
-    let mut idx = 0;
-    for (i, val) in dealt_cards.iter().enumerate() {
-        if *val == C_2 {
-            idx = i;
-            break;
-        }
-    }
+    let idx = dealt_cards.iter().position(|val| *val == C_2).unwrap_or(0);
+    // let mut idx = 0;
+    // for (i, val) in dealt_cards.iter().enumerate() {
+    //     if *val == C_2 {
+    //         idx = i;
+    //         break;
+    //     }
+    // }
     let mut winner = (idx as i32) / (NUM_KC as i32);
 
     // initializing the flag of "breaking heart"".
@@ -97,6 +97,8 @@ fn play_one_game(agents: &mut Vec<Box<dyn Agent>>,
     // When each of the four players has played a card, it is called a "trick";
     // each player plays a card once in a trick.
     for trick in 0..NUM_KC {
+        println!("== trick {} ==", trick + 1);
+
         let agent_order = determine_agent_order(winner);
 
         let mut card_sequence: [i32; NUM_PLAYERS] = [-1; NUM_PLAYERS];
@@ -104,11 +106,25 @@ fn play_one_game(agents: &mut Vec<Box<dyn Agent>>,
         for turn in 0..NUM_PLAYERS {
             let playing_agent = agent_order[turn] as usize;
 
+            print_hand(&agents[playing_agent].get_hand(), playing_agent);
+
             // Letting the agent choose a card.
             let mut card;
             loop {
-                card = agents[playing_agent].select_card();
-                if is_valid_card(&agents[playing_agent].get_hand(), &card_sequence, card, trick, bh_flag) {
+                card = agents[playing_agent].select_card(
+                    &whole_card_sequence,
+                    &whole_agent_sequence,
+                    trick,
+                    turn,
+                    bh_flag,
+                );
+                if is_valid_card(
+                    &agents[playing_agent].get_hand(),
+                    &card_sequence,
+                    card,
+                    trick,
+                    bh_flag,
+                ) {
                     break;
                 }
             }
@@ -128,6 +144,7 @@ fn play_one_game(agents: &mut Vec<Box<dyn Agent>>,
 
         // The winner of the current trick becomes the leading player of the next trick.
         winner = determine_winner(&agent_order, &card_sequence);
+        println!("");
     }
 
     // A single game ends when NUM_KC tricks have been carried out.
@@ -294,7 +311,14 @@ fn calc_penalty_points(
 trait Agent {
     fn get_hand(&self) -> &[i32; NUM_KC];
     fn set_hand(&mut self, cards: &[i32]);
-    fn select_card(&mut self) -> i32;
+    fn select_card(
+        &mut self,
+        whole_card_sequence: &[i32; NUM_CARDS],
+        whole_agent_sequence: &[i32; NUM_CARDS],
+        trick: usize,
+        turn: usize,
+        bh_flag: bool,
+    ) -> i32;
     fn update_hand(&mut self, card: i32);
 }
 
@@ -304,21 +328,11 @@ struct RandomAgent {
 
 impl RandomAgent {
     pub fn new() -> Self {
-        Self {
-            hand: [-1; NUM_KC]
-        }
+        Self { hand: [-1; NUM_KC] }
     }
-
-    // pub fn first(&self) -> i32 {
-    //     self.hand[0]
-    // }
 }
 
 impl Agent for RandomAgent {
-    fn get_hand(&self) -> &[i32; NUM_KC] {
-        &self.hand
-    }
-
     fn get_hand(&self) -> &[i32; NUM_KC] {
         &self.hand
     }
@@ -328,7 +342,14 @@ impl Agent for RandomAgent {
     }
 
     // Randomly selecting a card from the hand.
-    fn select_card(&mut self) -> i32 {
+    fn select_card(
+        &mut self,
+        _whole_card_sequence: &[i32; NUM_CARDS],
+        _whole_agent_sequence: &[i32; NUM_CARDS],
+        _trick: usize,
+        _turn: usize,
+        _bh_flag: bool,
+    ) -> i32 {
         let mut rng = rand::thread_rng();
         loop {
             let card_index = rng.gen_range(0..NUM_KC);
@@ -354,9 +375,7 @@ struct RuleBasedAgent {
 
 impl RuleBasedAgent {
     pub fn new() -> Self {
-        Self {
-            hand: [-1; NUM_KC]
-        }
+        Self { hand: [-1; NUM_KC] }
     }
 }
 
@@ -367,10 +386,41 @@ impl Agent for RuleBasedAgent {
 
     fn set_hand(&mut self, cards: &[i32]) {
         self.hand = cards.try_into().unwrap();
+        self.hand.sort();
     }
 
-    fn select_card(&mut self) -> i32 {
-        return 0; // Not yet implemented.
+    fn select_card(
+        &mut self,
+        whole_card_sequence: &[i32; NUM_CARDS],
+        whole_agent_sequence: &[i32; NUM_CARDS],
+        trick: usize,
+        turn: usize,
+        bh_flag: bool,
+    ) -> i32 {
+        let mut card_sequence: [i32; NUM_PLAYERS] = [-1; NUM_PLAYERS];
+        let mut agent_sequence: [i32; NUM_PLAYERS] = [-1; NUM_PLAYERS];
+        for i in 0..NUM_PLAYERS {
+            card_sequence[i] = whole_card_sequence[trick * NUM_PLAYERS + i];
+            agent_sequence[i] = whole_agent_sequence[trick * NUM_PLAYERS + i];
+        }
+
+        let mut score: [i32; NUM_KC] = [-1; NUM_KC];
+        for i in 0..NUM_KC {
+            if is_valid_card(&self.hand, &card_sequence, self.hand[i], trick, bh_flag) {
+                score[i] = 0;
+            }
+        }
+
+        let mut idx = 0;
+        let mut max_score = -1;
+        for (i, val) in score.iter().enumerate() {
+            if *val >= max_score {
+                max_score = *val;
+                idx = i;
+            }
+        }
+
+        return self.hand[idx];
     }
 
     fn update_hand(&mut self, card: i32) {
@@ -381,4 +431,17 @@ impl Agent for RuleBasedAgent {
             }
         }
     }
+}
+
+// Below for debug.
+
+fn print_hand(hand: &[i32; NUM_KC], agent_no: usize) {
+    print!("{}: ", agent_no);
+    for i in 0..NUM_KC {
+        if hand[i] == -1 {
+            continue;
+        }
+        print!("{}, ", CARD_NAME[hand[i] as usize]);
+    }
+    println!("");
 }
