@@ -32,9 +32,9 @@ fn main() {
     // Assigning agents:
     // 1 -> Random agent; it plays cards from its hand at random.
     // 2 -> Rule-based agent; it plays cards based on the pre-determined rules.
-    let idx: [i32; NUM_PLAYERS] = [1, 1, 1, 2];
+    let idx: [i32; NUM_PLAYERS] = [1, 2, 2, 2];
 
-    // Making instances of 4 agents and store the objects in Vec.
+    // Making instances of four agents and store the objects in Vec.
     let mut agents: Vec<Box<dyn Agent>> = Vec::new();
     for i in 0..NUM_PLAYERS {
         match idx[i] {
@@ -82,13 +82,6 @@ fn play_one_game(
     // Getting the playing sequence in the first trick based on agents' hands.
     // (the agent who has C-2 is the leading player in the initial trick).
     let idx = dealt_cards.iter().position(|val| *val == C_2).unwrap_or(0);
-    // let mut idx = 0;
-    // for (i, val) in dealt_cards.iter().enumerate() {
-    //     if *val == C_2 {
-    //         idx = i;
-    //         break;
-    //     }
-    // }
     let mut winner = (idx as i32) / (NUM_KC as i32);
 
     // initializing the flag of "breaking heart"".
@@ -144,6 +137,12 @@ fn play_one_game(
 
         // The winner of the current trick becomes the leading player of the next trick.
         winner = determine_winner(&agent_order, &card_sequence);
+
+        println!("");
+        for (agent, card) in agent_order.iter().zip(card_sequence.iter()) {
+            print!("Agent {}: ", agent + 1);
+            print_card(*card);
+        }
         println!("");
     }
 
@@ -339,6 +338,7 @@ impl Agent for RandomAgent {
 
     fn set_hand(&mut self, cards: &[i32]) {
         self.hand = cards.try_into().unwrap();
+        self.hand.sort();
     }
 
     // Randomly selecting a card from the hand.
@@ -406,7 +406,9 @@ impl Agent for RuleBasedAgent {
 
         let mut score: [i32; NUM_KC] = [-1; NUM_KC];
         for i in 0..NUM_KC {
-            if is_valid_card(&self.hand, &card_sequence, self.hand[i], trick, bh_flag) {
+            if self.hand[i] != -1
+                && is_valid_card(&self.hand, &card_sequence, self.hand[i], trick, bh_flag)
+            {
                 score[i] = 0;
             }
         }
@@ -436,7 +438,7 @@ impl Agent for RuleBasedAgent {
 // Below for debug.
 
 fn print_hand(hand: &[i32; NUM_KC], agent_no: usize) {
-    print!("{}: ", agent_no);
+    print!("{}: ", agent_no + 1);
     for i in 0..NUM_KC {
         if hand[i] == -1 {
             continue;
@@ -444,4 +446,8 @@ fn print_hand(hand: &[i32; NUM_KC], agent_no: usize) {
         print!("{}, ", CARD_NAME[hand[i] as usize]);
     }
     println!("");
+}
+
+fn print_card(card: i32) {
+    println!("{}", CARD_NAME[card as usize]);
 }
