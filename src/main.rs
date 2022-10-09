@@ -2,7 +2,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 
 // Total number of games
-const NUM_GAMES: usize = 100000;
+const NUM_GAMES: usize = 1;
 
 // Number of cards in each suit: 2-10, J, Q, K and A
 const NUM_KC: usize = 13;
@@ -23,13 +23,13 @@ const S_Q: i32 = SPADE * (NUM_KC as i32) + 10;
 const S_K: i32 = SPADE * (NUM_KC as i32) + 11;
 const S_A: i32 = SPADE * (NUM_KC as i32) + 12;
 
-const DEBUG_OUTPUT: bool = false;
+const DEBUG_OUTPUT: bool = true;
 
 fn main() {
     // Assigning agents:
     // 1 -> Random agent; it plays cards from its hand at random.
     // 2 -> Rule-based agent; it plays cards based on the pre-determined rules.
-    let idx: [i32; NUM_PLAYERS] = [1, 2, 2, 2];
+    let idx: [i32; NUM_PLAYERS] = [2, 2, 2, 2];
 
     // Making instances of four agents and store the objects in Vec.
     let mut agents: Vec<Box<dyn Agent>> = Vec::new();
@@ -242,7 +242,7 @@ fn calc_penalty_points(
 }
 
 //
-// Functions below commonly used
+// The following functions are commonly used.
 //
 
 fn get_suit(card: i32) -> i32 {
@@ -331,6 +331,9 @@ trait Agent {
 //
 // Random agent
 //
+// It is a reference agent for the absolute evaluation of the agents' strength,
+// where it plays cards from its hand at random.
+//
 
 struct RandomAgent {
     hand: [i32; NUM_KC],
@@ -395,6 +398,10 @@ impl Agent for RandomAgent {
 
 //
 // Rule-based agent
+//
+// It is an experienced-level player of the game Hearts.
+// The acquired penalty ratio was 0.44 when the three rule-based agents played against one random agent;
+// in other words, the random agent acquired about 2.3-fold penalty points of rule-based agents on average.
 //
 
 struct RuleBasedAgent {
@@ -467,6 +474,7 @@ impl RuleBasedAgent {
     ) -> i32 {
         let mut score = 0;
 
+        // The score of discarding S-Q becomes low.
         if card == S_Q {
             score = -70;
         }
@@ -478,6 +486,7 @@ impl RuleBasedAgent {
             score = -card;
         }
 
+        //
         if get_suit(card) == HEART {
             score = -card + 20;
         }
@@ -653,9 +662,9 @@ impl Agent for RuleBasedAgent {
             turn,
             bh_flag,
         );
-        if DEBUG_OUTPUT {
-            print_score(&score);
-        }
+        // if DEBUG_OUTPUT {
+        //     print_score(&score);
+        // }
 
         let mut idx = 0;
         for (j, &value) in score.iter().enumerate() {
@@ -701,12 +710,12 @@ fn print_card(card: i32) {
     println!("{}", CARD_NAME[card as usize]);
 }
 
-fn print_score(score: &[i32; NUM_KC]) {
-    print!("[");
-    for i in 0..NUM_KC {
-        if score[i] != std::i32::MIN {
-            print!("{}, ", score[i]);
-        }
-    }
-    println!("]");
-}
+// fn print_score(score: &[i32; NUM_KC]) {
+//     print!("[");
+//     for i in 0..NUM_KC {
+//         if score[i] != std::i32::MIN {
+//             print!("{}, ", score[i]);
+//         }
+//     }
+//     println!("]");
+// }
