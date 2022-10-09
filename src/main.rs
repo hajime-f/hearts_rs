@@ -2,7 +2,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 
 // Total number of games
-const NUM_GAMES: usize = 10000;
+const NUM_GAMES: usize = 100000;
 
 // Number of cards in each suit: 2-10, J, Q, K and A
 const NUM_KC: usize = 13;
@@ -42,7 +42,6 @@ fn main() {
     }
 
     let mut total_penalty_points: [i32; NUM_PLAYERS] = [0; NUM_PLAYERS];
-    let mut averaged_penalty_points: [f32; NUM_PLAYERS] = [0.0; NUM_PLAYERS];
 
     // Letting agents play the card game "Hearts" NUM_GAMES times.
     for _ in 1..=NUM_GAMES {
@@ -62,10 +61,19 @@ fn main() {
         }
     }
 
+    let mut averaged_penalty_points: [f32; NUM_PLAYERS] = [0.0; NUM_PLAYERS];
+    let mut averaged_penalty_ratio: [f32; NUM_PLAYERS] = [0.0; NUM_PLAYERS];
+
     for i in 0..NUM_PLAYERS {
         averaged_penalty_points[i] = (total_penalty_points[i] as f32) / (NUM_GAMES as f32);
     }
+    let sum: f32 = averaged_penalty_points.iter().sum();
+    for i in 0..NUM_PLAYERS {
+        averaged_penalty_ratio[i] = averaged_penalty_points[i] / sum;
+    }
+
     println!("{:?}", averaged_penalty_points);
+    println!("{:?}", averaged_penalty_ratio);
 }
 
 fn play_one_game(
@@ -486,11 +494,6 @@ impl RuleBasedAgent {
             score = 10 - self.count_number_of_suit_in_hand(card) - get_suit(card) + score;
         }
 
-        // if (get_suit(card) != HEART) && (card != S_Q) && (card != S_K) && (card != S_A) {
-        //     score += self.count_number_of_suit_remaining(whole_card_sequence, card)
-        //         - self.count_number_of_suit_in_hand(card);
-        // }
-
         if bh_flag && (get_suit(card) == HEART) {
             score += 50 - card;
         }
@@ -609,25 +612,6 @@ impl RuleBasedAgent {
             }
         }
         return count;
-    }
-
-    fn count_number_of_suit_remaining(
-        &self,
-        whole_card_sequence: &[i32; NUM_CARDS],
-        card: i32,
-    ) -> i32 {
-        let suit = get_suit(card);
-        let mut count = 0;
-
-        for i in 0..NUM_CARDS {
-            if whole_card_sequence[i] == -1 {
-                break;
-            }
-            if suit == get_suit(whole_card_sequence[i]) {
-                count += 1;
-            }
-        }
-        return (NUM_KC as i32) - count;
     }
 
     fn is_card_in_hand(&self, card: i32) -> bool {
