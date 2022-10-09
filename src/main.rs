@@ -2,7 +2,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 
 // Total number of games
-const NUM_GAMES: usize = 1;
+const NUM_GAMES: usize = 10000;
 
 // Number of cards in each suit: 2-10, J, Q, K and A
 const NUM_KC: usize = 13;
@@ -23,7 +23,7 @@ const S_Q: i32 = SPADE * (NUM_KC as i32) + 10;
 const S_K: i32 = SPADE * (NUM_KC as i32) + 11;
 const S_A: i32 = SPADE * (NUM_KC as i32) + 12;
 
-const DEBUG_OUTPUT: bool = true;
+const DEBUG_OUTPUT: bool = false;
 
 fn main() {
     // Assigning agents:
@@ -453,9 +453,9 @@ impl RuleBasedAgent {
         _card_sequence: &[i32; NUM_PLAYERS],
         _agent_sequence: &[i32; NUM_PLAYERS],
         card: i32,
-        _trick: usize,
+        trick: usize,
         _turn: usize,
-        _bh_flag: bool,
+        bh_flag: bool,
     ) -> i32 {
         let mut score = 0;
 
@@ -470,8 +470,29 @@ impl RuleBasedAgent {
             score = -card;
         }
 
+        if get_suit(card) == HEART {
+            score = -card + 20;
+        }
+
+        if trick >= 6 {
+            score = score - self.get_symbol(card);
+        }
+
         if (get_suit(card) == SPADE) && self.is_card_in_hand(S_Q) {
-            score = -card + score;
+            score = -50 + score;
+        }
+
+        if (card != S_Q) && (card != S_K) && (card != S_A) {
+            score = 10 - self.count_number_of_suit_in_hand(card) - get_suit(card) + score;
+        }
+
+        // if (get_suit(card) != HEART) && (card != S_Q) && (card != S_K) && (card != S_A) {
+        //     score += self.count_number_of_suit_remaining(whole_card_sequence, card)
+        //         - self.count_number_of_suit_in_hand(card);
+        // }
+
+        if bh_flag && (get_suit(card) == HEART) {
+            score += 50 - card;
         }
 
         return score;
@@ -489,6 +510,7 @@ impl RuleBasedAgent {
         _bh_flag: bool,
     ) -> i32 {
         let mut score = 0;
+        let leading_card = card_sequence[0];
 
         // The score of discarding S-Q becomes low.
         if card == S_Q {
@@ -508,8 +530,24 @@ impl RuleBasedAgent {
             return std::i32::MAX;
         }
 
+        // When the suit of the leading card is not SPADE, the agent must immediately discard S-Q.
+        if (card == S_Q) && (get_suit(card) != get_suit(leading_card)) {
+            return std::i32::MAX;
+        }
+
+        // When the suit of the leading card is not SPADE, the priority to discard S-K or S-A becomes high.
+        if ((card == S_K) || (card == S_A))
+            && (get_suit(card) != get_suit(leading_card))
+            && !self.is_card_discarded_in_game(whole_card_sequence, S_Q)
+        {
+            return std::i32::MAX - (50 - card);
+        }
+
         // When S-Q is discarded in the trick, the score to discard S-K or S-A becomes low.
-        if ((card == S_K) || (card == S_A)) && self.is_card_discarded_in_trick(card_sequence, S_Q) {
+        if ((card == S_K) || (card == S_A))
+            && self.is_card_discarded_in_trick(card_sequence, S_Q)
+            && (get_suit(card) == get_suit(leading_card))
+        {
             return -100 + card + score;
         }
 
@@ -518,21 +556,6 @@ impl RuleBasedAgent {
             && !self.is_card_discarded_in_game(whole_card_sequence, S_Q)
         {
             return -50 + card + score;
-        }
-
-        let leading_card = card_sequence[0];
-
-        //
-        if (card == S_Q) && (get_suit(card) != get_suit(leading_card)) {
-            return std::i32::MAX;
-        }
-
-        //
-        if ((card == S_K) || (card == S_A))
-            && (get_suit(card) != get_suit(leading_card))
-            && !self.is_card_discarded_in_game(whole_card_sequence, S_Q)
-        {
-            return std::i32::MAX - (50 - card);
         }
 
         //
@@ -546,6 +569,11 @@ impl RuleBasedAgent {
         //
         if (get_suit(card) == HEART) && (get_suit(card) != get_suit(leading_card)) {
             score = card;
+        }
+
+        //
+        if (get_suit(card) == HEART) && (get_suit(leading_card) == HEART) {
+            score = 60 - card;
         }
 
         return score;
@@ -572,6 +600,36 @@ impl RuleBasedAgent {
         return false;
     }
 
+    fn count_number_of_suit_in_hand(&self, card: i32) -> i32 {
+        let suit = get_suit(card);
+        let mut count = 0;
+        for i in 0..NUM_KC {
+            if suit == get_suit(self.hand[i]) {
+                count += 1
+            }
+        }
+        return count;
+    }
+
+    fn count_number_of_suit_remaining(
+        &self,
+        whole_card_sequence: &[i32; NUM_CARDS],
+        card: i32,
+    ) -> i32 {
+        let suit = get_suit(card);
+        let mut count = 0;
+
+        for i in 0..NUM_CARDS {
+            if whole_card_sequence[i] == -1 {
+                break;
+            }
+            if suit == get_suit(whole_card_sequence[i]) {
+                count += 1;
+            }
+        }
+        return (NUM_KC as i32) - count;
+    }
+
     fn is_card_in_hand(&self, card: i32) -> bool {
         for i in 0..NUM_KC {
             if self.hand[i] == card {
@@ -579,6 +637,10 @@ impl RuleBasedAgent {
             }
         }
         return false;
+    }
+
+    fn get_symbol(&self, card: i32) -> i32 {
+        return card % (NUM_KC as i32);
     }
 }
 
