@@ -27,7 +27,7 @@ fn main() {
     // Assigning agents:
     // 1 -> Random agent; it plays cards from its hand at random.
     // 2 -> Rule-based agent; it plays cards based on the pre-determined rules.
-    let idx: [i32; NUM_PLAYERS] = [1, 2, 2, 2];
+    let idx: [i32; NUM_PLAYERS] = [2, 2, 2, 2];
 
     // Making instances of four agents and store the objects in Vec.
     let mut agents: Vec<Box<dyn Agent>> = Vec::new();
@@ -435,7 +435,6 @@ impl RuleBasedAgent {
                 }
             }
         }
-
         return score;
     }
 
@@ -462,7 +461,7 @@ impl RuleBasedAgent {
         }
 
         if (get_suit(card) == SPADE) && self.is_card_in_hand(S_Q) {
-            score = -card;
+            score = -card - score;
         }
 
         return score;
@@ -582,13 +581,12 @@ impl Agent for RuleBasedAgent {
             turn,
             bh_flag,
         );
+        print_score(&score);
 
         let mut idx = 0;
-        let mut max_score = -1;
-        for (i, val) in score.iter().enumerate() {
-            if *val >= max_score {
-                max_score = *val;
-                idx = i;
+        for (j, &value) in score.iter().enumerate() {
+            if value >= score[idx] {
+                idx = j
             }
         }
 
@@ -627,4 +625,14 @@ fn print_hand(hand: &[i32; NUM_KC], agent_no: usize) {
 
 fn print_card(card: i32) {
     println!("{}", CARD_NAME[card as usize]);
+}
+
+fn print_score(score: &[i32; NUM_KC]) {
+    print!("[");
+    for i in 0..NUM_KC {
+        if score[i] != std::i32::MIN {
+            print!("{}, ", score[i]);
+        }
+    }
+    println!("]");
 }
