@@ -23,11 +23,13 @@ const S_Q: i32 = SPADE * (NUM_KC as i32) + 10;
 const S_K: i32 = SPADE * (NUM_KC as i32) + 11;
 const S_A: i32 = SPADE * (NUM_KC as i32) + 12;
 
+const DEBUG_OUTPUT: bool = true;
+
 fn main() {
     // Assigning agents:
     // 1 -> Random agent; it plays cards from its hand at random.
     // 2 -> Rule-based agent; it plays cards based on the pre-determined rules.
-    let idx: [i32; NUM_PLAYERS] = [2, 2, 2, 2];
+    let idx: [i32; NUM_PLAYERS] = [1, 2, 2, 2];
 
     // Making instances of four agents and store the objects in Vec.
     let mut agents: Vec<Box<dyn Agent>> = Vec::new();
@@ -85,7 +87,9 @@ fn play_one_game(
     // When each of the four players has played a card, it is called a "trick";
     // each player plays a card once in a trick.
     for trick in 0..NUM_KC {
-        println!("== trick {} ==", trick + 1);
+        if DEBUG_OUTPUT {
+            println!("== trick {} ==", trick + 1);
+        }
 
         let agent_order = determine_agent_order(winner);
 
@@ -94,7 +98,9 @@ fn play_one_game(
         for turn in 0..NUM_PLAYERS {
             let playing_agent = agent_order[turn] as usize;
 
-            print_hand(&agents[playing_agent].get_hand(), playing_agent);
+            if DEBUG_OUTPUT {
+                print_hand(&agents[playing_agent].get_hand(), playing_agent);
+            }
 
             // Letting the agent choose a card.
             let card = agents[playing_agent].select_card(
@@ -121,12 +127,14 @@ fn play_one_game(
         // The winner of the current trick becomes the leading player of the next trick.
         winner = determine_winner(&agent_order, &card_sequence);
 
-        println!("");
-        for (agent, card) in agent_order.iter().zip(card_sequence.iter()) {
-            print!("Agent {}: ", agent + 1);
-            print_card(*card);
+        if DEBUG_OUTPUT {
+            println!("");
+            for (agent, card) in agent_order.iter().zip(card_sequence.iter()) {
+                print!("Agent {}: ", agent + 1);
+                print_card(*card);
+            }
+            println!("");
         }
-        println!("");
     }
 
     // A single game ends when NUM_KC tricks have been carried out.
@@ -440,7 +448,7 @@ impl RuleBasedAgent {
 
     fn calc_score_first_turn(
         &self,
-        _whole_card_sequence: &[i32; NUM_CARDS],
+        whole_card_sequence: &[i32; NUM_CARDS],
         _whole_agent_sequence: &[i32; NUM_CARDS],
         _card_sequence: &[i32; NUM_PLAYERS],
         _agent_sequence: &[i32; NUM_PLAYERS],
@@ -456,12 +464,14 @@ impl RuleBasedAgent {
         }
 
         // The score of discarding S-K or S-A becomes low.
-        if (card == S_K) || (card == S_A) {
+        if ((card == S_K) || (card == S_A))
+            && !self.is_card_discarded_in_game(whole_card_sequence, S_Q)
+        {
             score = -card;
         }
 
         if (get_suit(card) == SPADE) && self.is_card_in_hand(S_Q) {
-            score = -card - score;
+            score = -card + score;
         }
 
         return score;
@@ -475,7 +485,7 @@ impl RuleBasedAgent {
         _agent_sequence: &[i32; NUM_PLAYERS],
         card: i32,
         _trick: usize,
-        _turn: usize,
+        turn: usize,
         _bh_flag: bool,
     ) -> i32 {
         let mut score = 0;
@@ -515,6 +525,22 @@ impl RuleBasedAgent {
         //
         if (card == S_Q) && (get_suit(card) != get_suit(leading_card)) {
             return std::i32::MAX;
+        }
+
+        //
+        if ((card == S_K) || (card == S_A))
+            && (get_suit(card) != get_suit(leading_card))
+            && !self.is_card_discarded_in_game(whole_card_sequence, S_Q)
+        {
+            return std::i32::MAX - (50 - card);
+        }
+
+        //
+        if (turn == NUM_PLAYERS - 1)
+            && ((card == S_K) || (card == S_A))
+            && !self.is_card_discarded_in_trick(card_sequence, S_Q)
+        {
+            return card;
         }
 
         //
@@ -581,7 +607,9 @@ impl Agent for RuleBasedAgent {
             turn,
             bh_flag,
         );
-        print_score(&score);
+        if DEBUG_OUTPUT {
+            print_score(&score);
+        }
 
         let mut idx = 0;
         for (j, &value) in score.iter().enumerate() {
