@@ -486,7 +486,6 @@ impl RuleBasedAgent {
             score = -card;
         }
 
-        //
         if get_suit(card) == HEART {
             score = -card + 20;
         }
@@ -534,7 +533,7 @@ impl RuleBasedAgent {
             score = -card;
         }
 
-        // When S-K or S-A is discarded in the trick, the score to discard S-Q becomes MAX.
+        // If S-K or S-A is discarded in the trick, the score to discard S-Q becomes MAX.
         if (card == S_Q)
             && (self.is_card_discarded_in_trick(card_sequence, S_K)
                 || self.is_card_discarded_in_trick(card_sequence, S_A))
@@ -542,12 +541,12 @@ impl RuleBasedAgent {
             return std::i32::MAX;
         }
 
-        // When the suit of the leading card is not SPADE, the agent must immediately discard S-Q.
+        // If the suit of the leading card is not SPADE, the agent must immediately discard S-Q.
         if (card == S_Q) && (get_suit(card) != get_suit(leading_card)) {
             return std::i32::MAX;
         }
 
-        // When the suit of the leading card is not SPADE, the priority to discard S-K or S-A becomes high.
+        // If the suit of the leading card is not SPADE, the priority to discard S-K or S-A becomes high.
         if ((card == S_K) || (card == S_A))
             && (get_suit(card) != get_suit(leading_card))
             && !self.is_card_discarded_in_game(whole_card_sequence, S_Q)
@@ -555,7 +554,7 @@ impl RuleBasedAgent {
             return std::i32::MAX - (50 - card);
         }
 
-        // When S-Q is discarded in the trick, the score to discard S-K or S-A becomes low.
+        // If S-Q is discarded in the trick, the score to discard S-K or S-A becomes low.
         if ((card == S_K) || (card == S_A))
             && self.is_card_discarded_in_trick(card_sequence, S_Q)
             && (get_suit(card) == get_suit(leading_card))
@@ -563,14 +562,14 @@ impl RuleBasedAgent {
             return -100 + card + score;
         }
 
-        // When S-Q is not yet discarded in the game, the score to discard S-K or S-A becomes low.
+        // If S-Q is not yet discarded in the game, the score to discard S-K or S-A becomes low.
         if ((card == S_K) || (card == S_A))
             && !self.is_card_discarded_in_game(whole_card_sequence, S_Q)
         {
             return -50 + card + score;
         }
 
-        //
+        // If S-Q has not been discarded on the last turn of the trick, the score to discard S-K or S-A becomes high.
         if (turn == NUM_PLAYERS - 1)
             && ((card == S_K) || (card == S_A))
             && !self.is_card_discarded_in_trick(card_sequence, S_Q)
@@ -578,12 +577,12 @@ impl RuleBasedAgent {
             return card;
         }
 
-        //
+        // If the suit of the leading card is not HEART, the priority to discard HEART becomes high.
         if (get_suit(card) == HEART) && (get_suit(card) != get_suit(leading_card)) {
             score = card;
         }
 
-        //
+        // If the suit of the leading card is HEART, the bigger number, the lower score.
         if (get_suit(card) == HEART) && (get_suit(leading_card) == HEART) {
             score = 60 - card;
         }
